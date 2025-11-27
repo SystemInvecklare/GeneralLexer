@@ -3,8 +3,14 @@ plugins {
     id 'maven-publish'
 }
 
+// Get latest tag or fallback to commit hash
+def gitTag = 'git describe --tags --abbrev=0'.execute().text.trim()
+def gitCommit = 'git rev-parse --short HEAD'.execute().text.trim()
+
+version = gitTag ? gitTag : gitCommit
+println "Building version $version"
+
 group = 'com.github.systeminvecklare.libs'
-version = '1.0.0'
 
 java {
     toolchain {
