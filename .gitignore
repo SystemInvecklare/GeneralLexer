@@ -97,4 +97,9 @@ local.properties
 hs_err_pid*
 replay_pid*
 
+
+# Un-ignore the wrapper! (needs to be after *.jar rule)
+!gradle/wrapper/**
+
+
 # End of https://www.toptal.com/developers/gitignore/api/java,eclipse
