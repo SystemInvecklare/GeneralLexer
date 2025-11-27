@@ -6,6 +6,8 @@ import java.util.function.Consumer;
 import com.github.systeminvecklare.libs.generallexer.CharStreamUtil;
 import com.github.systeminvecklare.libs.generallexer.ICharStream;
 import com.github.systeminvecklare.libs.generallexer.ILexerContext;
+import com.github.systeminvecklare.libs.generallexer.span.GeneralLexerRuntimeException;
+import com.github.systeminvecklare.libs.generallexer.span.Span;
 import com.github.systeminvecklare.libs.generallexer.token.IToken;
 
 public class MultiLineCommentStateSelector implements IStateSelector {
@@ -55,7 +57,7 @@ public class MultiLineCommentStateSelector implements IStateSelector {
 						stringBuilder.append(charStream.next());
 					}
 				}
-				throw new RuntimeException("Expected '"+end+"'!"); //TODO use context to throw at location
+				throw new GeneralLexerRuntimeException("Expected '"+end+"'!", Span.singleCharacter(charStream.getOffset()));
 			}
 		};
 	}

@@ -8,6 +8,9 @@ import java.util.function.Consumer;
 import com.github.systeminvecklare.libs.generallexer.CharStreamUtil;
 import com.github.systeminvecklare.libs.generallexer.ICharStream;
 import com.github.systeminvecklare.libs.generallexer.ILexerContext;
+import com.github.systeminvecklare.libs.generallexer.span.GeneralLexerRuntimeException;
+import com.github.systeminvecklare.libs.generallexer.span.Offset;
+import com.github.systeminvecklare.libs.generallexer.span.Span;
 import com.github.systeminvecklare.libs.generallexer.token.GroupToken;
 import com.github.systeminvecklare.libs.generallexer.token.IToken;
 
@@ -39,18 +42,20 @@ public class GroupStateSelector implements IStateSelector {
 		return new ILexerState() {
 			@Override
 			public void lex(ICharStream charStream, Consumer<IToken> tokenSink, ILexerContext lexerContext) throws IOException {
+				Offset spanStart = charStream.getOffset();
 				charStream.skip(start.length());
+				Offset tokensSpanStart = charStream.getOffset();
 				List<IToken> groupTokens = new ArrayList<IToken>();
 				while(charStream.hasNext()) {
 					if(CharStreamUtil.peakMatches(charStream, end)) {
+						Span tokensSpan = new Span(tokensSpanStart, charStream.getOffset());
 						charStream.skip(end.length());
-						tokenSink.accept(createToken(start, end, groupTokens));
+						tokenSink.accept(createToken(start, end, groupTokens, new Span(spanStart, charStream.getOffset()), tokensSpan));
 						return;
 					} else {
 						IStateSelector bestMatch = lexerContext.findBestMatch(charStream);
 						if(bestMatch == null) {
-							throw new RuntimeException("Failed at '"+charStream.next()+"'");
-							//TODO throw because we failed to parse inside
+							throw new GeneralLexerRuntimeException("Failed at '"+charStream.next()+"'", Span.singleCharacter(charStream.getOffset()));
 						}
 						bestMatch.createState().lex(charStream, new Consumer<IToken>() {
 							@Override
@@ -60,12 +65,12 @@ public class GroupStateSelector implements IStateSelector {
 						}, lexerContext);
 					}
 				}
-				throw new RuntimeException("Expected '"+end+"'!"); //TODO use context to throw at location
+				throw new GeneralLexerRuntimeException("Expected '"+end+"'!", Span.singleCharacter(charStream.getOffset()));
 			}
 		};
 	}
 
-	protected IToken createToken(String start, String end, List<IToken> groupTokens) {
-		return new GroupToken(start, end, groupTokens);
+	protected IToken createToken(String start, String end, List<IToken> groupTokens, Span span, Span tokensSpan) {
+		return new GroupToken(start, end, groupTokens, span, tokensSpan);
 	}
 }

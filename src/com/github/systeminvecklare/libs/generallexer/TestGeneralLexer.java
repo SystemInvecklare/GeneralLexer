@@ -6,6 +6,10 @@ import java.io.StringReader;
 public class TestGeneralLexer {
 
 	public static void main(String[] args) throws IOException {
+		//TODO
+		// 1. Add way to find source position
+		// 2. Make it gradlew and buildable in jitpack
+		
 		String asmExample = """
 					bits 64
 					default rel

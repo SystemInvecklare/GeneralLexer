@@ -3,12 +3,15 @@ package com.github.systeminvecklare.libs.generallexer.state;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import com.github.systeminvecklare.libs.generallexer.CharStreamUtil;
 import com.github.systeminvecklare.libs.generallexer.ICharStream;
 import com.github.systeminvecklare.libs.generallexer.ILexerContext;
+import com.github.systeminvecklare.libs.generallexer.span.GeneralLexerRuntimeException;
+import com.github.systeminvecklare.libs.generallexer.span.Offset;
+import com.github.systeminvecklare.libs.generallexer.span.Span;
 import com.github.systeminvecklare.libs.generallexer.token.IToken;
 import com.github.systeminvecklare.libs.generallexer.token.SymbolToken;
 
@@ -16,10 +19,10 @@ public class SymbolStateSelector implements IStateSelector {
 	public static class SymbolStateSelectorBuilder {
 		private float priority = 1f;
 		private final List<String> symbols = new ArrayList<String>();
-		private Function<String, IToken> makeToken = new Function<String, IToken>() {
+		private BiFunction<String, Span, IToken> makeToken = new BiFunction<String, Span, IToken>() {
 			@Override
-			public IToken apply(String t) {
-				return new SymbolToken(t);
+			public IToken apply(String t, Span span) {
+				return new SymbolToken(t, span);
 			}
 		};
 		
@@ -44,7 +47,7 @@ public class SymbolStateSelector implements IStateSelector {
 			return this;
 		}
 		
-		public SymbolStateSelectorBuilder makeToken(Function<String, IToken> makeToken) {
+		public SymbolStateSelectorBuilder makeToken(BiFunction<String, Span, IToken> makeToken) {
 			this.makeToken = makeToken;
 			return this;
 		}
@@ -60,9 +63,9 @@ public class SymbolStateSelector implements IStateSelector {
 	
 	private final String[] symbols;
 	private final float priority;
-	private final Function<String, IToken> makeToken;
+	private final BiFunction<String, Span, IToken> makeToken;
 	
-	private SymbolStateSelector(String[] symbols, float priority, Function<String, IToken> makeToken) {
+	private SymbolStateSelector(String[] symbols, float priority, BiFunction<String, Span, IToken> makeToken) {
 		this.symbols = symbols;
 		this.priority = priority;
 		this.makeToken = makeToken;
@@ -92,11 +95,11 @@ public class SymbolStateSelector implements IStateSelector {
 					}
 				}
 				if(matchingSymbol == null) {
-					throw new RuntimeException("No matching symbol");
+					throw new GeneralLexerRuntimeException("No matching symbol", Span.singleCharacter(charStream.getOffset()));
 				}
-				
+				Offset spanStart = charStream.getOffset();
 				charStream.skip(matchingSymbol.length());
-				tokenSink.accept(makeToken.apply(matchingSymbol));
+				tokenSink.accept(makeToken.apply(matchingSymbol, new Span(spanStart, charStream.getOffset())));
 			}
 		};
 	}

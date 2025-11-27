@@ -4,9 +4,12 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
+import com.github.systeminvecklare.libs.generallexer.span.GeneralLexerRuntimeException;
+import com.github.systeminvecklare.libs.generallexer.span.Offset;
+import com.github.systeminvecklare.libs.generallexer.span.Span;
 import com.github.systeminvecklare.libs.generallexer.state.GroupStateSelector;
 import com.github.systeminvecklare.libs.generallexer.state.ILexerState;
 import com.github.systeminvecklare.libs.generallexer.state.IStateSelector;
@@ -40,10 +43,10 @@ public class GeneralLexer {
 				.addStateSelector(new IntegerStateSelector())
 				.addStateSelector(new LineCommentStateSelector(";").keepLineBreak())
 				.addStateSelector(SymbolStateSelector.builder().addChars(".,+-*/:").build())
-				.addStateSelector(SymbolStateSelector.builder().priority(2).addSymbol('\n').addSymbol("\r\n").makeToken(new Function<String, IToken>() {
+				.addStateSelector(SymbolStateSelector.builder().priority(2).addSymbol('\n').addSymbol("\r\n").makeToken(new BiFunction<String, Span, IToken>() {
 					@Override
-					public IToken apply(String t) {
-						return LineBreakToken.INSTANCE;
+					public IToken apply(String t, Span span) {
+						return new LineBreakToken(span);
 					}
 				}).build());
 	}
@@ -54,8 +57,8 @@ public class GeneralLexer {
 				.addStateSelector(new StringStateSelector("\""))
 				.addStateSelector(new StringStateSelector("\"\"\"", 2) {
 					@Override
-					protected IToken createToken(String string) {
-						return new TextBlockToken(string);
+					protected IToken createToken(String string, Span span) {
+						return new TextBlockToken(string, span);
 					}
 				})
 				.addStateSelector(new StringStateSelector("\'")) //TODO create special for ''
@@ -92,7 +95,8 @@ public class GeneralLexer {
 					return new ILexerState() {
 						@Override
 						public void lex(ICharStream charStream, Consumer<IToken> tokenSink, ILexerContext lexerContext) throws IOException {
-							tokenSink.accept(new SymbolToken(String.valueOf(charStream.next())));
+							Span span = Span.singleCharacter(charStream.getOffset());
+							tokenSink.accept(new SymbolToken(String.valueOf(charStream.next()), span));
 						}
 					};
 				}
@@ -136,7 +140,7 @@ public class GeneralLexer {
 				ILexerState state = chosenStateSelector.createState();
 				state.lex(charStream, tokenSink, lexerContext);
 			} else {
-				throw new RuntimeException("No state found! "+charStream.peak());
+				throw new GeneralLexerRuntimeException("No state found! "+charStream.peak()+" at "+charStream.getOffset(), Span.singleCharacter(charStream.getOffset()));
 			}
 		}
 	}
@@ -177,6 +181,11 @@ public class GeneralLexer {
 		@Override
 		public void skip(int skip) throws IOException {
 			read += skip;
+		}
+
+		@Override
+		public Offset getOffset() {
+			return wrapped.getOffset();
 		}
 	}
 }
